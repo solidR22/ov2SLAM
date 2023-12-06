@@ -29,6 +29,7 @@
 #include <vector>
 #include <queue>
 #include <mutex>
+#include <string>
 
 #include "slam_params.hpp"
 #include "ros_visualizer.hpp"

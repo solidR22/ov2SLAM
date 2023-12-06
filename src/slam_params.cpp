@@ -31,6 +31,8 @@ SlamParams::SlamParams(const cv::FileStorage &fsSettings) {
     std::cout << "\nSLAM Parameters are being setup...\n";
 
     // READ THE SETTINGS
+    save_path.assign(fsSettings["savePath"]);
+    
     debug_ = static_cast<int>(fsSettings["debug"]);;
     log_timings_ = static_cast<int>(fsSettings["log_timings"]);;
 

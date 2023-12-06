@@ -2833,7 +2833,7 @@ bool Optimizer::fullPoseGraph(std::vector<Sophus::SE3d, Eigen::aligned_allocator
         std::cout << summary.FullReport() << std::endl;
     
     std::ofstream f;
-    std::string filename = "ov2slam_full_traj_wlc_opt.txt";
+    std::string filename = pslamstate_->save_path + std::string("ov2slam_full_traj_wlc_opt.txt");
 
     if( pslamstate_->debug_ )
         std::cout << "\n Going to write the full Pose Graph trajectory into : " 

@@ -582,8 +582,8 @@ void SlamManager::writeResults()
     visualizeFullKFsTraj(pcurframe_->img_time_);
 
     // Write Trajectories files
-    Logger::writeTrajectory("ov2slam_traj.txt");
-    Logger::writeTrajectoryKITTI("ov2slam_traj_kitti.txt");
+    Logger::writeTrajectory(pslamstate_->save_path + std::string("ov2slam_traj.txt"));
+    Logger::writeTrajectoryKITTI(pslamstate_->save_path + std::string("ov2slam_traj_kitti.txt"));
 
     for( const auto & kfid_pkf : pmap_->map_pkfs_ )
     {
@@ -592,7 +592,7 @@ void SlamManager::writeResults()
             Logger::addKfSE3Pose(pkf->img_time_, pkf->getTwc());
         }
     }
-    Logger::writeKfsTrajectory("ov2slam_kfs_traj.txt");
+    Logger::writeKfsTrajectory(pslamstate_->save_path + std::string("ov2slam_kfs_traj.txt"));
 
     // Apply full BA on KFs + 3D MPs if required + save
     if( pslamstate_->do_full_ba_ ) 
@@ -610,7 +610,7 @@ void SlamManager::writeResults()
             }
         }
 
-        Logger::writeKfsTrajectory("ov2slam_fullba_kfs_traj.txt");
+        Logger::writeKfsTrajectory(pslamstate_->save_path + std::string("ov2slam_fullba_kfs_traj.txt"));
     }
 
     // Write full trajectories taking into account LC
@@ -636,7 +636,7 @@ void SlamManager::writeFullTrajectoryLC()
     Sophus::SE3d Twc, Twkf;
 
     std::ofstream f;
-    std::string filename = "ov2slam_full_traj_wlc.txt";
+    std::string filename = pslamstate_->save_path + std::string("ov2slam_full_traj_wlc.txt");
 
     std::cout << "\n Going to write the full trajectory w. LC into : " << filename << "\n";
 

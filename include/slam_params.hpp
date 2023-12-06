@@ -66,6 +66,8 @@ public:
     // Variables relative to the setup used for the SLAM
     //=====================================================
 
+    std::string save_path;
+
     // Calibration parameters (TODO: Get Ready to store all of these in a vector to handle N camera)
     std::string cam_left_topic_, cam_right_topic_;
     std::string cam_left_model_, cam_right_model_;

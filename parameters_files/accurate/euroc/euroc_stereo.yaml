@@ -1,6 +1,6 @@
 %YAML 1.0
 ---
-
+savePath: /home/silab/SLAM/ov2slam/result/
 #--------------------------------------------------------------------------------------------
 # Camera Parameters. Adjust them!
 #--------------------------------------------------------------------------------------------
@@ -66,7 +66,7 @@ log_timings: 0
 mono: 0
 stereo: 1
 
-force_realtime: 1
+force_realtime: 0
 
 # Estimator Mode
 slam_mode: 1

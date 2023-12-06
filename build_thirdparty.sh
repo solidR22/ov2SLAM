@@ -9,7 +9,7 @@ cd Thirdparty/obindex2
 mkdir build
 cd build/
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j4
+make -j10
 cd ../../..
 
 echo ""
@@ -21,7 +21,7 @@ cd Thirdparty/ibow_lcd
 mkdir build
 cd build/
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j4
+make -j10
 cd ../../..
 
 echo ""
@@ -34,7 +34,7 @@ mkdir build
 mkdir install
 cd build/
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="../install/"
-make -j4 install
+make -j10 install
 cd ../../..
 
 echo ""
@@ -45,6 +45,7 @@ cd Thirdparty/ceres-solver
 mkdir build
 mkdir install
 cd build/
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=14 -DCMAKE_CXX_FLAGS="-march=native" -DCMAKE_INSTALL_PREFIX="../install/" -DBUILD_EXAMPLES=OFF
-make -j4 install
+# cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=14 -DCMAKE_CXX_FLAGS="-march=native" -DCMAKE_INSTALL_PREFIX="../install/" -DBUILD_EXAMPLES=OFF
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=14 -DCMAKE_INSTALL_PREFIX="../install/" -DBUILD_EXAMPLES=OFF
+make -j10 install
 cd ../../..
