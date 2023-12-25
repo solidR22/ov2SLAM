@@ -140,19 +140,20 @@ void VisualFrontEnd::kltTracking()
     std::vector<bool> vkpis3d;
 
     // First we're gonna track 3d kps on only 2 levels
-    v3dkpids.reserve(pcurframe_->nb3dkps_);
-    v3dkps.reserve(pcurframe_->nb3dkps_);
-    v3dpriors.reserve(pcurframe_->nb3dkps_);
+    v3dkpids.reserve(pcurframe_->nb3dkps_);       // 特征点的ID
+    v3dkps.reserve(pcurframe_->nb3dkps_);         // 特征点在上一帧的像素坐标
+    v3dpriors.reserve(pcurframe_->nb3dkps_);      // 投影到当前帧的像素坐标，后面使用光流更新
 
     // Then we'll track 2d kps on full pyramid levels
-    vkpids.reserve(pcurframe_->nbkps_);
-    vkps.reserve(pcurframe_->nbkps_);
-    vpriors.reserve(pcurframe_->nbkps_);
+    vkpids.reserve(pcurframe_->nbkps_);           // 特征点的ID
+    vkps.reserve(pcurframe_->nbkps_);             // 特征点在上一帧的像素坐标
+    vpriors.reserve(pcurframe_->nbkps_);          // 特征点在上一帧的像素坐标，后面更新为当前帧对应的特征点的像素坐标
 
     vkpis3d.reserve(pcurframe_->nbkps_);
 
 
     // Front-End is thread-safe so we can direclty access curframe's kps
+    // 遍历当前帧的特征点
     for( const auto &it : pcurframe_->mapkps_ ) 
     {
         auto &kp = it.second;
@@ -162,6 +163,7 @@ void VisualFrontEnd::kltTracking()
         {
             if( kp.is3d_ ) 
             {
+                // 计算三维点的像素坐标
                 cv::Point2f projpx = pcurframe_->projWorldToImageDist(pmap_->map_plms_.at(kp.lmid_)->getPoint());
 
                 // Add prior if projected into image
@@ -188,11 +190,12 @@ void VisualFrontEnd::kltTracking()
     {
         int nbpyrlvl = 1;
 
-        // Good / bad kps vector
+        // Good / bad kps vector，每个点的跟踪状态
         std::vector<bool> vkpstatus;
 
         auto vprior = v3dpriors;
 
+        // 光流跟踪（在前两层）
         ptracker_->fbKltTracking(
                     prev_pyr_, 
                     cur_pyr_, 
@@ -204,6 +207,7 @@ void VisualFrontEnd::kltTracking()
                     v3dpriors, 
                     vkpstatus);
 
+        // 跟踪成功的点
         size_t nbgood = 0;
         size_t nbkps = v3dkps.size();
 
@@ -224,7 +228,7 @@ void VisualFrontEnd::kltTracking()
             std::cout << "\n >>> KLT Tracking w. priors : " << nbgood;
             std::cout << " out of " << nbkps << " kps tracked!\n";
         }
-
+        // 追踪上的好点不超过1/3
         if( nbgood < 0.33 * nbkps ) {
             // Motion model might be quite wrong, P3P is recommended next
             // and not using any prior
@@ -234,6 +238,7 @@ void VisualFrontEnd::kltTracking()
     }
 
     // 2nd track other kps if any
+    // 在每一层上追踪所有的2D点
     if( !vkps.empty() ) 
     {
         // Good / bad kps vector
@@ -449,6 +454,7 @@ void VisualFrontEnd::epipolar2d2dFiltering()
         Profiler::Start("2.FE_TM_EpipolarFiltering");
     
     // Get prev. KF (direct access as Front-End is thread safe)
+    // 取出当前帧
     auto pkf = pmap_->map_pkfs_.at(pcurframe_->kfid_);
 
     if( pkf == nullptr ) {
@@ -456,9 +462,9 @@ void VisualFrontEnd::epipolar2d2dFiltering()
         exit(-1);
     }
 
-    // Get cur. Frame nb kps
+    // Get cur. Frame nb kps，当前帧的特征点的数量
     size_t nbkps = pcurframe_->nbkps_;
-
+    // 特征点小于8，不能计算本质矩阵，直接返回
     if( nbkps < 8 ) {
         if( pslamstate_->debug_ )
             std::cout << "\nNot enough kps to compute Essential Matrix\n";
@@ -677,25 +683,27 @@ void VisualFrontEnd::computePose()
 
     std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> > vkps;
 
-    vbvs.reserve(nb3dkps);
-    vwpts.reserve(nb3dkps);
-    vkpids.reserve(nb3dkps);
-    voutliersidx.reserve(nb3dkps);
+    vbvs.reserve(nb3dkps);         // 归一化坐标
+    vwpts.reserve(nb3dkps);        // 地图点的坐标
+    vkpids.reserve(nb3dkps);       // 特征点的ID
+    voutliersidx.reserve(nb3dkps); // P3P计算的外点的ID
 
-    vkps.reserve(nb3dkps);
+    vkps.reserve(nb3dkps);         // 特征点的去畸变像素坐标
     vscales.reserve(nb3dkps);
 
     bool bdop3p = bp3preq_ || pslamstate_->dop3p_;
 
     // Store every 3D bvs, MPs and their related ids
+    // 遍历当前帧的特征点
     for( const auto &it : pcurframe_->mapkps_ ) 
     {
         if( !it.second.is3d_ ) {
             continue;
         }
-
+        // 取出Keypoint
         auto &kp = it.second;
         // auto plm = pmap_->getMapPoint(kp.lmid_);
+        // 取出对应的地图点MapPoint
         auto plm = pmap_->map_plms_.at(kp.lmid_);
         if( plm == nullptr ) {
             continue;
@@ -738,7 +746,7 @@ void VisualFrontEnd::computePose()
                             pcurframe_->pcalib_leftcam_->fx_, 
                             pcurframe_->pcalib_leftcam_->fy_, 
                             Twc,
-                            voutliersidx,
+                            voutliersidx, // ? 外点
                             use_lmeds);
 
         if( pslamstate_->debug_ )
@@ -754,7 +762,7 @@ void VisualFrontEnd::computePose()
         {
             if( pslamstate_->debug_ )
                 std::cout << "\n \t>>> Not enough inliers for reliable pose est. Resetting KF state\n";
-
+            // 重开
             resetFrame();
 
             return;
@@ -988,12 +996,13 @@ bool VisualFrontEnd::checkNewKfReq()
     if( pslamstate_->debug_ || pslamstate_->log_timings_ )
         Profiler::Start("2.FE_TM_checkNewKfReq");
 
-    // Get prev. KF
+    // 取出上一关键帧
     auto pkfit = pmap_->map_pkfs_.find(pcurframe_->kfid_);
 
     if( pkfit == pmap_->map_pkfs_.end() ) {
         return false; // Should not happen
     }
+    // 取出上一帧
     auto pkf = pkfit->second;
 
     // Compute median parallax
@@ -1005,21 +1014,17 @@ bool VisualFrontEnd::checkNewKfReq()
     // Id diff with last KF
     int nbimfromkf = pcurframe_->id_-pkf->id_;
 
-    if( pcurframe_->noccupcells_ < 0.33 * pslamstate_->nbmaxkps_
-        && nbimfromkf >= 5
-        && !pslamstate_->blocalba_is_on_ )
+    if( pcurframe_->noccupcells_ < 0.33 * pslamstate_->nbmaxkps_ && nbimfromkf >= 5 && !pslamstate_->blocalba_is_on_ )
     {
         return true;
     }
 
-    if( pcurframe_->nb3dkps_ < 20 &&
-        nbimfromkf >= 2 )
+    if( pcurframe_->nb3dkps_ < 20 && nbimfromkf >= 2 )
     {
         return true;
     }
 
-    if( pcurframe_->nb3dkps_ > 0.5 * pslamstate_->nbmaxkps_ 
-        && (pslamstate_->blocalba_is_on_ || nbimfromkf < 2) )
+    if( pcurframe_->nb3dkps_ > 0.5 * pslamstate_->nbmaxkps_ && (pslamstate_->blocalba_is_on_ || nbimfromkf < 2) )
     {
         return false;
     }
@@ -1027,8 +1032,7 @@ bool VisualFrontEnd::checkNewKfReq()
     // Time diff since last KF in sec.
     double time_diff = pcurframe_->img_time_ - pkf->img_time_;
 
-    if( pslamstate_->stereo_ && time_diff > 1. 
-        && !pslamstate_->blocalba_is_on_ )
+    if( pslamstate_->stereo_ && time_diff > 1. && !pslamstate_->blocalba_is_on_ )
     {
         return true;
     }
@@ -1156,6 +1160,7 @@ void VisualFrontEnd::preprocessImage(cv::Mat &img_raw)
 
     // Update cur img
     if( pslamstate_->use_clahe_ ) {
+        // 应用CLAHE图像预处理
         ptracker_->pclahe_->apply(img_raw, cur_img_);
     } else {
         cur_img_ = img_raw;
@@ -1168,7 +1173,7 @@ void VisualFrontEnd::preprocessImage(cv::Mat &img_raw)
         if( !cur_pyr_.empty() && !pslamstate_->btrack_keyframetoframe_ ) {
             prev_pyr_.swap(cur_pyr_);
         }
-
+        // 构造可以传递给calcOpticalFlowPyrLK的图像金字塔。
         cv::buildOpticalFlowPyramid(cur_img_, cur_pyr_, pslamstate_->klt_win_size_, pslamstate_->nklt_pyr_lvl_);
     }
 

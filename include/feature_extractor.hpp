@@ -33,17 +33,18 @@ class FeatureExtractor {
 public:
     FeatureExtractor() {};
     FeatureExtractor(size_t nmaxpts, size_t nmaxdist, double dmaxquality, int nfast_th);
-
+    // 检测特征点
     std::vector<cv::Point2f> detectGFTT(const cv::Mat &im, const std::vector<cv::Point2f> &vcurkps,
                                         const cv::Mat &roi, int nbmax=-1) const;
 
     std::vector<cv::Point2f> detectGridFAST(const cv::Mat &im, const int ncellsize, 
         const std::vector<cv::Point2f> &vcurkps, const cv::Rect &roi);
 
-    std::vector<cv::Mat> describeBRIEF(const cv::Mat &im, const std::vector<cv::Point2f> &vpts) const;
-    
     std::vector<cv::Point2f> detectSingleScale(const cv::Mat &im, const int ncellsize, 
             const std::vector<cv::Point2f> &vcurkps, const cv::Rect &roi);
+    
+    // 计算描述子
+    std::vector<cv::Mat> describeBRIEF(const cv::Mat &im, const std::vector<cv::Point2f> &vpts) const;
 
     void setMask(const cv::Mat &im, const std::vector<cv::Point2f> &vpts,  const int dist, cv::Mat &mask) const;
 

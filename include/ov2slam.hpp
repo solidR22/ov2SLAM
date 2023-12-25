@@ -57,10 +57,13 @@ public:
 
     bool getNewImage(cv::Mat &iml, cv::Mat &imr, double &time);
 
-    void addNewStereoImages(const double time, cv::Mat &im0, cv::Mat &im1);
+    // SLAM系统接口，输入双目图像
+    void addNewStereoImages(const double time, cv::Mat &im0, cv::Mat &im1); 
     void addNewMonoImage(const double time, cv::Mat &im0);
 
+    // 读取配置文件，初始化相机参数
     void setupCalibration();
+    // 计算立体矫正参数
     void setupStereoCalibration();
     
     void reset();
@@ -79,33 +82,33 @@ public:
     
     void visualizeFinalKFsTraj();
 
-    int frame_id_ = -1;
-    bool bnew_img_available_ = false;
+    int frame_id_ = -1;                             // 帧ID
+    bool bnew_img_available_ = false;               // 有新图像输入
 
-    bool bexit_required_ = false;
+    bool bexit_required_ = false;                   // 是否退出的标志
     bool bis_on_ = false;
     
     bool bframe_viz_ison_ = false;
     bool bkf_viz_ison_ = false;
 
-    std::shared_ptr<SlamParams> pslamstate_;
-    std::shared_ptr<RosVisualizer> prosviz_;
+    std::shared_ptr<SlamParams> pslamstate_;        // 配置文件参数
+    std::shared_ptr<RosVisualizer> prosviz_;        // ROS发布
 
-    std::shared_ptr<CameraCalibration> pcalib_model_left_;
-    std::shared_ptr<CameraCalibration> pcalib_model_right_;
+    std::shared_ptr<CameraCalibration> pcalib_model_left_;  // 相机模型左
+    std::shared_ptr<CameraCalibration> pcalib_model_right_; // 相机模型右
 
-    std::shared_ptr<Frame> pcurframe_;
+    std::shared_ptr<Frame> pcurframe_;                      // 当前帧
 
     std::shared_ptr<MapManager> pmap_;
 
     std::unique_ptr<VisualFrontEnd> pvisualfrontend_;
     std::unique_ptr<Mapper> pmapper_;
 
-    std::shared_ptr<FeatureExtractor> pfeatextract_;
-    std::shared_ptr<FeatureTracker> ptracker_;
+    std::shared_ptr<FeatureExtractor> pfeatextract_;        // 特征点提取
+    std::shared_ptr<FeatureTracker> ptracker_;              // 追踪
 
-    std::queue<cv::Mat> qimg_left_, qimg_right_;
-    std::queue<double> qimg_time_;
+    std::queue<cv::Mat> qimg_left_, qimg_right_;            // 存放图像的队列
+    std::queue<double> qimg_time_;                          // 存放图像时间的队列
 
     std::mutex img_mutex_;
 };

@@ -47,14 +47,14 @@ public:
     MapPoint(const int lmid, const int kfid, const cv::Mat &desc, const cv::Scalar &color, const bool bobs=true);
 
     void setPoint(const Eigen::Vector3d &ptxyz, const double kfanch_invdepth=-1.);
-    Eigen::Vector3d getPoint() const;
+    Eigen::Vector3d getPoint() const;  // 返回当前地图点的三维坐标
 
     std::set<int> getKfObsSet() const;
 
-    void addKfObs(const int kfid);
+    void addKfObs(const int kfid);     // 添加关键帧对这个地图点的观测信息
     void removeKfObs(const int kfid);
 
-    void addDesc(const int kfid, const cv::Mat &d);
+    void addDesc(const int kfid, const cv::Mat &d); // 为地图点添加帧ID和对应的描述子
 
     bool isBad();
 
@@ -70,7 +70,7 @@ public:
     int lmid_;
 
     // True if seen in current frame
-    bool isobs_;
+    bool isobs_;   
 
     // True if MP has been init
     bool is3d_;
@@ -78,12 +78,12 @@ public:
     // Set of observed KF ids
     std::set<int> set_kfids_;
 
-    // 3D position
+    // 3D position in world coordinate
     Eigen::Vector3d ptxyz_;
 
     // Anchored position
     int kfid_;
-    double invdepth_;
+    double invdepth_; // 在当前帧中的深度的逆
 
     // Mean desc and list of descs
     cv::Mat desc_;

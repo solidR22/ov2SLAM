@@ -30,7 +30,7 @@
 
 #include <thread>
 
-
+// 局部BA
 void Optimizer::localBA(Frame &newframe, const bool buse_robust_cost)
 {
     if( pslamstate_->debug_ || pslamstate_->log_timings_ )
@@ -82,11 +82,7 @@ void Optimizer::localBA(Frame &newframe, const bool buse_robust_cost)
 
     // Storing the factors and their residuals block ids 
     // for fast accessing when cheking for outliers
-    std::vector<
-        std::pair<ceres::CostFunction*, 
-        std::pair<ceres::ResidualBlockId, 
-            std::pair<int,int>
-    >>> 
+    std::vector< std::pair<ceres::CostFunction*, std::pair<ceres::ResidualBlockId, std::pair<int,int> >>> 
         vreprojerr_kfid_lmid, vright_reprojerr_kfid_lmid, vanchright_reprojerr_kfid_lmid;
 
     // Add the left cam calib parameters

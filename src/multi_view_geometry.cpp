@@ -49,7 +49,7 @@
 // Triangulation methods
 // =====================
 
-// Generic
+// Generic，计算左相机坐标系下的三维点
 Eigen::Vector3d MultiViewGeometry::triangulate(const Sophus::SE3d &Tlr, 
     const Eigen::Vector3d &bvl, const Eigen::Vector3d &bvr)
 {

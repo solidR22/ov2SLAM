@@ -250,7 +250,7 @@ cv::Point2f CameraCalibration::projectCamToImage(const Eigen::Vector3d &pt) cons
 
     return cv::Point2f(fx_ * x + cx_, fy_ * y + cy_);
 }
-
+// 三维点投影到未去畸变的像素平面
 cv::Point2f CameraCalibration::projectCamToImageDist(const Eigen::Vector3d &pt) const
 {
     std::lock_guard<std::mutex> lock(intrinsic_mutex_);
@@ -345,6 +345,7 @@ Eigen::Vector3d CameraCalibration::getTranslation() const
     return Tc0ci_.translation();
 }
 
+// 返回Tc1c2
 Sophus::SE3d CameraCalibration::getExtrinsic() const
 {
     std::lock_guard<std::mutex> lock(extrinsic_mutex_);

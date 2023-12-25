@@ -41,6 +41,7 @@ MapManager::MapManager(std::shared_ptr<SlamParams> pstate, std::shared_ptr<Frame
 // This function turn the current frame into a Keyframe.
 // Keypoints extraction is performed and the related MPs and
 // the new KF are added to the map.
+// im为预处理后的，imraw为原始图
 void MapManager::createKeyframe(const cv::Mat &im, const cv::Mat &imraw)
 {
     if( pslamstate_->debug_ || pslamstate_->log_timings_ )
@@ -70,35 +71,43 @@ void MapManager::prepareFrame()
     // Update new KF id
     pcurframe_->kfid_ = nkfid_;
 
-    // Filter if too many kps
+    // Filter if too many kps，当前帧的特征点数量大于最大数量
     if( (int)pcurframe_->nbkps_ > pslamstate_->nbmaxkps_ ) {
+        // 遍历每一个网格中的特征点，取出每一个网格
         for( const auto &vkpids : pcurframe_->vgridkps_ ) {
+            // 该网格中的特征点数量大于2
             if( vkpids.size() > 2 ) {
-                int lmid2remove = -1;
+                int lmid2remove = -1; // 记录观测次数最少的特征点对应的空间点ID
+                // 初始化为最大值，记录每个网格内被观测次数最少的特征点
                 size_t minnbobs = std::numeric_limits<size_t>::max();
+                // 取出网格中的每一个特征点ID
                 for( const auto &lmid : vkpids ) {
+                    // 取出对应的地图点
                     auto plmit = map_plms_.find(lmid);
                     if( plmit != map_plms_.end() ) {
+                        // 得到能观测到这个特征点的关键帧数量
                         size_t nbobs = plmit->second->getKfObsSet().size();
                         if( nbobs < minnbobs ) {
                             lmid2remove = lmid;
                             minnbobs = nbobs;
                         }
                     } else {
+                        // 地图中没有找到这个特征点，直接从当前帧中删除
                         removeObsFromCurFrameById(lmid);
                         break;
                     }
                 }
                 if( lmid2remove >= 0 ) {
+                    // 删除观测最少的点
                     removeObsFromCurFrameById(lmid2remove);
                 }
             }
         }
     }
-
+    // 遍历当前帧的特征点，如果没有对应的地图点，直接从当前帧删除
     for( const auto &kp : pcurframe_->getKeypoints() ) {
 
-        // Get the related MP
+        // Get the related MapPoint
         auto plmit = map_plms_.find(kp.lmid_);
         
         if( plmit == map_plms_.end() ) {
@@ -113,16 +122,16 @@ void MapManager::prepareFrame()
     if( pslamstate_->debug_ || pslamstate_->log_timings_ )
         Profiler::StopAndDisplay(pslamstate_->debug_, "2.FE_CF_prepareFrame");
 }
-
+// 更新共视信息，在Frame中插入共视关键帧和局部地图点信息（是共视关键帧的点，但不是当前帧的点）
 void MapManager::updateFrameCovisibility(Frame &frame)
 {
     if( pslamstate_->debug_ || pslamstate_->log_timings_ )
         Profiler::Start("1.KF_updateFrameCovisilbity");
 
     // Update the MPs and the covisilbe graph between KFs
-    std::map<int,int> map_covkfs;
-    std::unordered_set<int> set_local_mapids;
-
+    std::map<int,int> map_covkfs;  // 当前关键帧的共视关键帧<共视关键帧ID, 共视特征点个数>
+    std::unordered_set<int> set_local_mapids;  // 是共视帧的3D点，但不是当前帧的特征点
+    // 取出这个当前关键帧的所有特征点
     for( const auto &kp : frame.getKeypoints() ) {
 
         // Get the related MP
@@ -136,6 +145,7 @@ void MapManager::updateFrameCovisibility(Frame &frame)
 
         // Get the set of KFs observing this KF to update 
         // covisible KFs
+        // 返回这个地图点的共视关键帧ID
         for( const auto &kfid : plmit->second->getKfObsSet() ) 
         {
             if( kfid != frame.kfid_ ) 
@@ -151,12 +161,13 @@ void MapManager::updateFrameCovisibility(Frame &frame)
     }
 
     // Update covisibility for covisible KFs
-    std::set<int> set_badkfids;
+    std::set<int> set_badkfids; // 不好的共视关键帧
+    // 遍历共视关键帧
     for( const auto &kfid_cov : map_covkfs ) 
     {
         int kfid = kfid_cov.first;
         int covscore = kfid_cov.second;
-        
+        // 取出共视关键帧
         auto pkfit = map_pkfs_.find(kfid);
         if( pkfit != map_pkfs_.end() ) 
         {
@@ -164,16 +175,18 @@ void MapManager::updateFrameCovisibility(Frame &frame)
             pkfit->second->map_covkfs_[frame.kfid_] = covscore;
 
             // Set the unobserved local map for future tracking
+            // 取出共视关键帧的所有的3D点
             for( const auto &kp : pkfit->second->getKeypoints3d() ) {
+                // 如果不是当前帧的特征点
                 if( !frame.isObservingKp(kp.lmid_) ) {
                     set_local_mapids.insert(kp.lmid_);
                 }
             }
-        } else {
+        } else { // 不存在这个关键帧
             set_badkfids.insert(kfid);
         }
     }
-
+    // 去除不好的共视关键帧
     for( const auto &kfid : set_badkfids ) {
         map_covkfs.erase(kfid);
     }
@@ -239,7 +252,7 @@ void MapManager::addKeypointsToFrame(const cv::Mat &im, const std::vector<cv::Po
             frame.addKeypoint(vpts.at(i), nlmid_, vdescs.at(i));
 
             // Create landmark with same id
-            cv::Scalar col = im.at<uchar>(vpts.at(i).y,vpts.at(i).x);
+            cv::Scalar col = im.at<uchar>(vpts.at(i).y,vpts.at(i).x); // 像素值
             addMapPoint(vdescs.at(i), col);
         } 
         else {
@@ -287,10 +300,10 @@ void MapManager::extractKeypoints(const cv::Mat &im, const cv::Mat &imraw)
 {
     if( pslamstate_->debug_ || pslamstate_->log_timings_ )
         Profiler::Start("2.FE_CF_extractKeypoints");
-
+    // 获取当前帧的特征点
     std::vector<Keypoint> vkps = pcurframe_->getKeypoints();
 
-    std::vector<cv::Point2f> vpts;
+    std::vector<cv::Point2f> vpts; // 存放当前帧特征点的像素坐标
     std::vector<int> vscales;
     std::vector<float> vangles;
 
@@ -364,19 +377,20 @@ void MapManager::describeKeypoints(const cv::Mat &im, const std::vector<Keypoint
 
 // This function is responsible for performing stereo matching operations
 // for the means of triangulation
+// 输出Frame和左右图像的金字塔
 void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftpyr, const std::vector<cv::Mat> &vrightpyr) 
 {
     if( pslamstate_->debug_ || pslamstate_->log_timings_ )
         Profiler::Start("1.KF_stereoMatching");
 
-    // Find stereo correspondances with left kps
+    // Find stereo correspondances with left kps，取出左图的特征点，与特征点的数量
     auto vleftkps = frame.getKeypoints();
     size_t nbkps = vleftkps.size();
 
     // ZNCC Parameters
     size_t nmaxpyrlvl = pslamstate_->nklt_pyr_lvl_*2;
     int winsize = 7;
-
+    // ? = 2^3 = 8
     float uppyrcoef = std::pow(2,pslamstate_->nklt_pyr_lvl_);
     float downpyrcoef = 1. / uppyrcoef;
     
@@ -384,21 +398,22 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
     std::vector<cv::Point2f> v3dkps, v3dpriors, vkps, vpriors;
 
     // First we're gonna track 3d kps on only 2 levels
-    v3dkpids.reserve(frame.nb3dkps_);
-    v3dkps.reserve(frame.nb3dkps_);
-    v3dpriors.reserve(frame.nb3dkps_);
+    v3dkpids.reserve(frame.nb3dkps_);    // 右图3D点的ID
+    v3dkps.reserve(frame.nb3dkps_);      // 右图3D点对应的左图的像素坐标
+    v3dpriors.reserve(frame.nb3dkps_);   // 右图3D点的投影坐标（初始化坐标）
 
     // Then we'll track 2d kps on full pyramid levels
     vkpids.reserve(nbkps);
     vkps.reserve(nbkps);
     vpriors.reserve(nbkps);
 
+    // 遍历左图的特征点，如果是3D点直接投影到右图，如果不是，找到附近的地图点，有3D点再取附近3D点的平均深度投影到右图
     for( size_t i = 0 ; i < nbkps ; i++ )
     {
-        // Set left kp
+        // 取出左图的KeyPoint
         auto &kp = vleftkps.at(i);
 
-        // Set prior right kp
+        // 初始化右图的特征点坐标为左图的特征点坐标
         cv::Point2f priorpt = kp.px_;
 
         // If 3D, check if we can find a prior in right image
@@ -417,8 +432,8 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
                 continue;
             }
         } 
-        
-        // If stereo rect images, prior from SAD
+        // 如果不是3D点才会继续往下处理
+        // If stereo rect images, prior from SAD，文件设置没有立体矫正
         if( pslamstate_->bdo_stereo_rect_ ) {
 
             float xprior = -1.;
@@ -437,11 +452,11 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
         }
         else { // Generate prior from 3d neighbors
             const size_t nbmin3dcokps = 1;
-
+            // 找到附近（左上）网格中的特征点
             auto vnearkps = frame.getSurroundingKeypoints(kp);
-            if( vnearkps.size() >= nbmin3dcokps ) 
+            if( vnearkps.size() >= nbmin3dcokps ) // 特征点大于0
             {
-                std::vector<Keypoint> vnear3dkps;
+                std::vector<Keypoint> vnear3dkps;    // 存储附近的3D特征点
                 vnear3dkps.reserve(vnearkps.size());
                 for( const auto &cokp : vnearkps ) {
                     if( cokp.is3d_ ) {
@@ -449,27 +464,27 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
                     }
                 }
 
-                if( vnear3dkps.size() >= nbmin3dcokps ) {
+                if( vnear3dkps.size() >= nbmin3dcokps ) { // 3D特征点大于0
                 
-                    size_t nb3dkp = 0;
+                    size_t nb3dkp = 0;   // 对应的地图点的数量
                     double mean_z = 0.;
                     double weights = 0.;
 
-                    for( const auto &cokp : vnear3dkps ) {
-                        auto plm = getMapPoint(cokp.lmid_);
+                    for( const auto &cokp : vnear3dkps ) {  // 遍历有3D信息的特征点
+                        auto plm = getMapPoint(cokp.lmid_); // 得到地图点
                         if( plm != nullptr ) {
                             nb3dkp++;
-                            double coef = 1. / cv::norm(cokp.unpx_ - kp.unpx_);
+                            double coef = 1. / cv::norm(cokp.unpx_ - kp.unpx_); // 1/(左图特征点像素坐标-左图附近特征点像素坐标)
                             weights += coef;
-                            mean_z += coef * frame.projWorldToCam(plm->getPoint()).z();
+                            mean_z += coef * frame.projWorldToCam(plm->getPoint()).z(); // 空间点的三维坐标转到相机坐标系下的z值
                         }
                     }
 
-                    if( nb3dkp >= nbmin3dcokps ) {
-                        mean_z /= weights;
-                        Eigen::Vector3d predcampt = mean_z * ( kp.bv_ / kp.bv_.z() );
+                    if( nb3dkp >= nbmin3dcokps ) {   // 对应的地图点大于0
+                        mean_z /= weights;           // 空间点的三维坐标转到相机坐标系下的平均z值
+                        Eigen::Vector3d predcampt = mean_z * ( kp.bv_ / kp.bv_.z() ); // 将左图的特征点的深度设为平均深度
 
-                        cv::Point2f projpt = frame.projCamToRightImageDist(predcampt);
+                        cv::Point2f projpt = frame.projCamToRightImageDist(predcampt); // 使用平均深度的点投影到右图，计算像素坐标
 
                         if( frame.isInRightImage(projpt) ) 
                         {
@@ -489,8 +504,8 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
     }
 
     // Storing good tracks   
-    std::vector<cv::Point2f> vgoodrkps;
-    std::vector<int> vgoodids;
+    std::vector<cv::Point2f> vgoodrkps; // 追踪上的特征点像素坐标，右图
+    std::vector<int> vgoodids;          // 追踪上的特征点ID
     vgoodrkps.reserve(nbkps);
     vgoodids.reserve(nbkps);
 
@@ -506,7 +521,7 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
 
         // Good / bad kps vector
         std::vector<bool> vkpstatus;
-
+        // 光流法找特征点
         ptracker_->fbKltTracking(
                     vleftpyr, 
                     vrightpyr, 
@@ -515,7 +530,7 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
                     pslamstate_->nklt_err_, 
                     pslamstate_->fmax_fbklt_dist_, 
                     v3dkps, 
-                    v3dpriors, 
+                    v3dpriors,   // 优化后的特征点
                     vkpstatus);
 
         size_t nbgood = 0;
@@ -579,9 +594,10 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
     size_t nbgood = 0;
 
     float epi_err = 0.;
-
+    // 遍历特征点，将检测通过的特征点，插入到帧的信息
     for( size_t i = 0; i < nbkps ; i++ ) 
     {
+        // 取出匹配上的左右图的去畸变的特征点
         cv::Point2f lunpx = frame.getKeypointById(vgoodids.at(i)).unpx_;
         cv::Point2f runpx = frame.pcalib_rightcam_->undistortImagePoint(vgoodrkps.at(i));
 
@@ -592,6 +608,7 @@ void MapManager::stereoMatching(Frame &frame, const std::vector<cv::Mat> &vleftp
             vgoodrkps.at(i).y = lunpx.y;
         }
         else {
+            // ?计算误差
             epi_err = MultiViewGeometry::computeSampsonDistance(frame.Frl_, lunpx, runpx);
         }
         
@@ -711,12 +728,12 @@ std::shared_ptr<MapPoint> MapManager::getMapPoint(const int lmid) const
     return it->second;
 }
 
-// Update a MP world pos.
+// Update a MP world pos. (vkps.at(kpidx).lmid_, wpt, 1./left_pt.z())
 void MapManager::updateMapPoint(const int lmid, const Eigen::Vector3d &wpt, const double kfanch_invdepth)
 {
     std::lock_guard<std::mutex> lock(lm_mutex_);
     std::lock_guard<std::mutex> lockkf(kf_mutex_);
-
+    // 找到这个地图点
     auto plmit = map_plms_.find(lmid);
 
     if( plmit == map_plms_.end() ) {
@@ -727,16 +744,21 @@ void MapManager::updateMapPoint(const int lmid, const Eigen::Vector3d &wpt, cons
         return;
     }
 
-    // If MP 2D -> 3D => Notif. KFs 
+    // 目前还没有在地图点中被设置成3D点
     if( !plmit->second->is3d_ ) {
+        // 遍历能看到这个地图点的所有关键帧
         for( const auto &kfid : plmit->second->getKfObsSet() ) {
             auto pkfit = map_pkfs_.find(kfid);
+            // 这个关键帧存在
             if( pkfit != map_pkfs_.end() ) {
+                // 将这个帧中的这个ID的特征点设为3D点
                 pkfit->second->turnKeypoint3d(lmid);
             } else {
+                // 这个帧不存在，从地图点中删除这个帧的信息
                 plmit->second->removeKfObs(kfid);
             }
         }
+        // 这个地图点能在当前帧被观测到
         if( plmit->second->isobs_ ) {
             pcurframe_->turnKeypoint3d(lmid);
         }
@@ -797,7 +819,7 @@ void MapManager::addMapPointKfObs(const int lmid, const int kfid)
     }
 }
 
-// Merge two MapPoints
+// Merge two MapPoints，当前帧的特征点ID，地图点ID
 void MapManager::mergeMapPoints(const int prevlmid, const int newlmid)
 {
     // 1. Get Kf obs + descs from prev MP
@@ -1038,7 +1060,7 @@ void MapManager::removeObsFromCurFrameById(const int lmid)
 
     plmit->second->isobs_ = false;
 
-    // Update MP color
+    // Update MP color，设置观测不到的点的颜色为浅灰色
     colored_pt = pcl::PointXYZRGB(plmit->second->color_[0] 
                                 , plmit->second->color_[0]
                                 , plmit->second->color_[0]

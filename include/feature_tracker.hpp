@@ -35,7 +35,7 @@ class FeatureTracker {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    // FeatureTracker() {}
+    // FeatureTracker() {}，nmax_iter是最大迭代次数；fmax_px_precision是相对变化阈值
     FeatureTracker(int nmax_iter, float fmax_px_precision, cv::Ptr<cv::CLAHE> pclahe) 
         : klt_convg_crit_(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, nmax_iter, fmax_px_precision)
         , pclahe_(pclahe)
@@ -50,7 +50,7 @@ public:
     bool inBorder(const cv::Point2f &pt, const cv::Mat &im) const;
 
     // KLT optim. parameter
-    cv::TermCriteria klt_convg_crit_;
+    cv::TermCriteria klt_convg_crit_; // 指定优化算法停止条件：cv::TermCriteria::COUNT：基于迭代次数；cv::TermCriteria::EPS：基于目标函数值的相对变化
 
-    cv::Ptr<cv::CLAHE> pclahe_;
+    cv::Ptr<cv::CLAHE> pclahe_;       // 直方图均衡化
 };

@@ -32,6 +32,7 @@
 #include "map_manager.hpp"
 #include "optimizer.hpp"
 
+// 优化线程
 class Estimator {
 
 public:
@@ -61,14 +62,14 @@ public:
 
     std::unique_ptr<Optimizer> poptimizer_;
 
-    std::shared_ptr<Frame> pnewkf_;
+    std::shared_ptr<Frame> pnewkf_; // 最新的关键帧
 
-    bool bnewkfavailable_ = false;
-    bool bexit_required_ = false;
+    bool bnewkfavailable_ = false;  // 列表是否有新帧
+    bool bexit_required_ = false;   // 程序结束的标志
 
     bool blooseba_on_ = false;
 
-    std::queue<std::shared_ptr<Frame>> qpkfs_;
+    std::queue<std::shared_ptr<Frame>> qpkfs_; // 从mapper线程传过来的关键帧
 
     std::mutex qkf_mutex_;
 };

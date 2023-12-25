@@ -73,7 +73,7 @@ void LoopCloser::run()
     std::cout << "\n LoopCloser is ready to process Keyframes!\n";
 
     while( !bexit_required_ ) {
-
+        // 取出最新的关键帧
         if( getNewKf() ) 
         {
             if( pnewkf_ == nullptr ) {
@@ -85,22 +85,24 @@ void LoopCloser::run()
 
             // Preprocess KF before using it for LC
             pslamstate_->lckfid_ = pnewkf_->kfid_;
-
+            // 取出当前帧的特征点
             auto vkps = pnewkf_->getKeypoints();
             size_t nbkps = vkps.size();
-            std::vector<cv::KeyPoint> vcvkps;
-            cv::Mat cvdescs;
+            std::vector<cv::KeyPoint> vcvkps;   // 保存这一帧有对应地图点且有描述子的特征点，后续插入fast特征点（brief描述子）
+            cv::Mat cvdescs;                    // 保存对应的描述子，后续插入fast特征点（brief描述子）
             vcvkps.reserve(nbkps + 300);
-
+            // 在vcvkps附近设置mask
             cv::Mat mask = cv::Mat(newkfimg_.rows, newkfimg_.cols, CV_8UC1, cv::Scalar(255));
-
+            // 遍历所有的特征点
             for( const auto &kp : vkps ) {
+                // 取出特征点对应的地图点
                 auto plm = pmap_->getMapPoint(kp.lmid_);
                 if( plm == nullptr ) {
                     continue;
                 } 
-                else if ( !plm->desc_.empty() ) 
+                else if ( !plm->desc_.empty() ) // 地图点的描述子非空
                 {
+                    // 构造插入特征点
                     vcvkps.push_back(cv::KeyPoint(kp.px_, 5., kp.angle_, 1., kp.scale_));
                     cvdescs.push_back(plm->desc_);
 
@@ -112,7 +114,7 @@ void LoopCloser::run()
                 continue;
             }
 
-            std::vector<cv::KeyPoint> vaddkps;
+            std::vector<cv::KeyPoint> vaddkps; // fast检测出的角点
 
             // This reduces the probabibilty of having two simultaneous detections
             // in different threads which might slow down the front-end
@@ -120,14 +122,17 @@ void LoopCloser::run()
             {
             std::lock_guard<std::mutex> lock(pmap_->map_mutex_);
             }
+            // fast特征点检测
             pfastd_->detect(newkfimg_, vaddkps, mask);
 
             if( !vaddkps.empty() ) {
+                // 保存fast检测出的前300个点
                 cv::KeyPointsFilter::retainBest(vaddkps, 300);
-                
-                cv::Mat adddescs;
+                // 使用brief计算fast点的描述子
+                cv::Mat adddescs; // 保存描述子
                 pbriefd_->compute(newkfimg_, vaddkps, adddescs);
 
+                // 描述子非空，插入新特征点
                 if( !adddescs.empty() ) {
                     vcvkps.insert(vcvkps.end(), vaddkps.begin(), vaddkps.end());
                     cv::vconcat(cvdescs, adddescs, cvdescs);
@@ -147,14 +152,15 @@ void LoopCloser::run()
             kf_idx_++;
             vkfids_.push_back(pnewkf_->kfid_);
 
-            ibow_lcd::LCDetectorResult result;
+            ibow_lcd::LCDetectorResult result; // 闭环检测结果
+            // 进行闭环检测，当前帧在闭环中的ID，当前帧的特征点，当前帧的描述子，检测结果
             lcdetetector_.process(kf_idx_, vcvkps, cvdescs, &result);
             
             if( pslamstate_->debug_ || pslamstate_->log_timings_ )
                 Profiler::StopAndDisplay(pslamstate_->debug_, "0.LC_ProcessKF");
 
             switch (result.status) {
-                case ibow_lcd::LC_DETECTED:
+                case ibow_lcd::LC_DETECTED: // 闭环检测成功
                     if( pslamstate_->debug_ )
                         std::cout << "--- Loop detected!!!: " << result.train_id 
                             << " with " << result.inliers << " inliers\n";
@@ -180,12 +186,12 @@ void LoopCloser::run()
 #endif
 }
 
-
+// 输入参数，与当前帧构成闭环的帧
 void LoopCloser::processLoopCandidate(int kfloopidx)
 {
     // Get the KF stored in the vector of processed KF
     int kfid = vkfids_.at(kfloopidx);
-
+    // 取出构成闭环的帧
     auto plckf = pmap_->getKeyframe(kfid);
 
     // If not in the map anymore, get the closest one
@@ -197,10 +203,10 @@ void LoopCloser::processLoopCandidate(int kfloopidx)
     if( pslamstate_->debug_ )
         std::cout << "\n Testing candidate KF #" << kfid << "(im #" 
             << plckf->id_ << " / cur im #" << pnewkf_->id_ << " )! \n";
-
+    // 取出当前帧的共视帧
     auto cov_map = pnewkf_->getCovisibleKfMap();
     auto it = cov_map.find(kfid);
-    if( it != cov_map.end() ) {
+    if( it != cov_map.end() ) { // 当前帧的共视帧有这一帧，且共视点超过30个，直接return
         if( it->second > 30 ) {
             if( pslamstate_->debug_ )
                 std::cout << "\n KF already covisible ! Skipping!\n";
@@ -374,7 +380,7 @@ void LoopCloser::processLoopCandidate(int kfloopidx)
         pslamstate_->blc_is_on_ = false; 
     }
 }
-
+// opencv BF匹配
 void LoopCloser::knnMatching(const Frame &newkf, const Frame &lckf, std::vector<std::pair<int,int>> &vkplmids)
 {
     std::vector<int> vkpids, vlmids;
@@ -458,7 +464,7 @@ void LoopCloser::knnMatching(const Frame &newkf, const Frame &lckf, std::vector<
         std::cout << "\n Found #" << vkplmids.size() << " matches between loop KFs!\n";
 }
 
-
+// 极线去除外点
 bool LoopCloser::epipolarFiltering(const Frame &newkf, const Frame &lckf, std::vector<std::pair<int,int>> &vkplmids, std::vector<int> &voutliers_idx)
 {
     Eigen::Matrix3d R;
@@ -498,7 +504,7 @@ bool LoopCloser::epipolarFiltering(const Frame &newkf, const Frame &lckf, std::v
     return success;
 }
 
-
+// Search more MPs in LC KF local Map
 void LoopCloser::trackLoopLocalMap(const Frame &newkf, const Frame &lckf, const Sophus::SE3d &Twc, const float maxdist, const float ratio, std::vector<std::pair<int,int>> &vkplmids)
 {
     // Search LC local map for more matches
@@ -761,7 +767,7 @@ std::map<int,int> LoopCloser::matchToMap(const Frame &frame, const Sophus::SE3d 
 
     return map_previd_newid;
 }
-
+// 计算位姿
 bool LoopCloser::p3pRansac(const Frame &newkf, std::vector<std::pair<int,int>> &vkplmids, std::vector<int> &voutliers_idx, Sophus::SE3d &Twc)
 {
     if( vkplmids.size() < 4 ) {
@@ -927,7 +933,7 @@ void LoopCloser::removeOutliers(std::vector<std::pair<int,int>> &vkplmids, std::
     voutliers_idx.clear();
 }
 
-
+// 取最新的一帧的Frame和左相机原始图，其余的不要
 bool LoopCloser::getNewKf()
 {
     std::lock_guard<std::mutex> lock(qkf_mutex_);
@@ -948,7 +954,7 @@ bool LoopCloser::getNewKf()
 
     return true;
 }
-
+// 插入关键帧，左图原始图像
 void LoopCloser::addNewKf(const std::shared_ptr<Frame> &pkf, const cv::Mat &im)
 {
 #ifndef IBOW_LCD

@@ -88,6 +88,7 @@ public:
         
         while( !pslam_->bexit_required_ )
         {
+            // 双目
             if( pslam_->pslamstate_->stereo_ )
             {
                 cv::Mat image0, image1;
@@ -112,18 +113,20 @@ public:
                     }
                     else
                     {
+                        // ROS Msg 转灰度图
                         image0 = getGrayImageFromMsg(img0_buf.front());
                         image1 = getGrayImageFromMsg(img1_buf.front());
                         img0_buf.pop();
                         img1_buf.pop();
 
                         if( !image0.empty() && !image1.empty() ) {
+                            // 输入SLAM系统
                             pslam_->addNewStereoImages(time0, image0, image1);
                         }
                     }
                 }
             } 
-            else if( pslam_->pslamstate_->mono_ ) 
+            else if( pslam_->pslamstate_->mono_ ) // 单目
             {
                 cv::Mat image0;
 
@@ -148,8 +151,8 @@ public:
         std::cout << "\n Bag reader SyncProcess thread is terminating!\n";
     }
 
-    std::queue<sensor_msgs::ImageConstPtr> img0_buf;
-    std::queue<sensor_msgs::ImageConstPtr> img1_buf;
+    std::queue<sensor_msgs::ImageConstPtr> img0_buf;  // 左图缓冲
+    std::queue<sensor_msgs::ImageConstPtr> img1_buf;  // 右图缓冲
     std::mutex img_mutex;
     
     SlamManager *pslam_;
@@ -184,6 +187,7 @@ int main(int argc, char** argv)
         std::cout << "\nParameters file loaded...\n";
     }
 
+    // 读取参数文件
     std::shared_ptr<SlamParams> pparams;
     pparams.reset( new SlamParams(fsSettings) );
 
@@ -191,7 +195,7 @@ int main(int argc, char** argv)
     std::shared_ptr<RosVisualizer> prosviz;
     prosviz.reset( new RosVisualizer(nh) );
 
-    // Setting up the SLAM Manager
+    // Setting up the SLAM Manager，主程序
     SlamManager slam(pparams, prosviz);
 
     // Start the SLAM thread

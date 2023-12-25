@@ -35,11 +35,13 @@
 #include "map_manager.hpp"
 #include "feature_tracker.hpp"
 
+// 存储上一帧的Twc
 class MotionModel {
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+    // 恒速模型预测当前位姿
     void applyMotionModel(Sophus::SE3d &Twc, double time) {
         if( prev_time_ > 0 ) 
         {
@@ -83,9 +85,9 @@ public:
     }
     
 
-    double prev_time_ = -1.;
+    double prev_time_ = -1.;     // 上一帧的时间
 
-    Sophus::SE3d prevTwc_;
+    Sophus::SE3d prevTwc_;       // 上一帧的位姿
     Eigen::Matrix<double, 6, 1> log_relT_ = Eigen::Matrix<double, 6, 1>::Zero();
 };
 
@@ -116,7 +118,7 @@ public:
     float computeParallax(const int kfid, bool do_unrot=true, bool bmedian=true, bool b2donly=false);
 
     bool checkReadyForInit();
-    bool checkNewKfReq();
+    bool checkNewKfReq();     // 检查是否是新关键帧
 
     void createKeyframe();
 
@@ -126,18 +128,18 @@ public:
     void resetFrame();
     void reset();
 
-    std::shared_ptr<SlamParams> pslamstate_;
-    std::shared_ptr<Frame> pcurframe_;
-    std::shared_ptr<MapManager> pmap_;
+    std::shared_ptr<SlamParams> pslamstate_;   // 配置参数
+    std::shared_ptr<Frame> pcurframe_;         // 当前帧
+    std::shared_ptr<MapManager> pmap_;         // 地图管理
 
-    std::shared_ptr<FeatureTracker> ptracker_;
+    std::shared_ptr<FeatureTracker> ptracker_; // 追踪器
 
     cv::Mat left_raw_img_;
-    cv::Mat cur_img_, prev_img_;
-    std::vector<cv::Mat> cur_pyr_, prev_pyr_;
+    cv::Mat cur_img_, prev_img_;               // 预处理后的图像
+    std::vector<cv::Mat> cur_pyr_, prev_pyr_;  // 构造可以传递给calcOpticalFlowPyrLK的图像金字塔
     std::vector<cv::Mat> kf_pyr_;
     
     MotionModel motion_model_;
 
-    bool bp3preq_ = false; 
+    bool bp3preq_ = false;                     //? 光流跟踪失败，需要使用P3P
 };

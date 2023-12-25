@@ -53,6 +53,7 @@ SlamManager::SlamManager(std::shared_ptr<SlamParams> pstate, std::shared_ptr<Ros
     std::cout << "\n SetupCalibration()\n";
     setupCalibration();
 
+    // 不进行
     if( pslamstate_->stereo_ && pslamstate_->bdo_stereo_rect_ ) {
         std::cout << "\n SetupStereoCalibration()\n";
         setupStereoCalibration();
@@ -61,6 +62,7 @@ SlamManager::SlamManager(std::shared_ptr<SlamParams> pstate, std::shared_ptr<Ros
         pslamstate_->bdo_stereo_rect_ = false;
     }
 
+    // 不进行
     // If no stereo rectification required (i.e. mono config or 
     // stereo w/o rectification) and image undistortion required
     if( !pslamstate_->bdo_stereo_rect_ && pslamstate_->bdo_undist_ ) {
@@ -72,7 +74,7 @@ SlamManager::SlamManager(std::shared_ptr<SlamParams> pstate, std::shared_ptr<Ros
 
     if( pslamstate_->mono_ ) {
         pcurframe_.reset( new Frame(pcalib_model_left_, pslamstate_->nmaxdist_) );
-    } else if( pslamstate_->stereo_ ) {
+    } else if( pslamstate_->stereo_ ) { // 双目相机
         pcurframe_.reset( new Frame(pcalib_model_left_, pcalib_model_right_, pslamstate_->nmaxdist_) );
     } else {
         std::cerr << "\n\n=====================================================\n\n";
@@ -85,7 +87,9 @@ SlamManager::SlamManager(std::shared_ptr<SlamParams> pstate, std::shared_ptr<Ros
     int tilesize = 50;
     cv::Size clahe_tiles(pcalib_model_left_->img_w_ / tilesize
                         , pcalib_model_left_->img_h_ / tilesize);
-                        
+    
+    // CLAHE是一种直方图均衡化的变体，它可以在图像的不同区域应用不同的对比度增强，以更好地保留细节并防止过度增强噪声
+    // clahe_tiles是网格划分大小，在不同的区域应用不同的对比度增强
     cv::Ptr<cv::CLAHE> pclahe = cv::createCLAHE(pslamstate_->fclahe_val_, clahe_tiles);
 
     pfeatextract_.reset( new FeatureExtractor(
@@ -103,10 +107,7 @@ SlamManager::SlamManager(std::shared_ptr<SlamParams> pstate, std::shared_ptr<Ros
     pmap_.reset( new MapManager(pslamstate_, pcurframe_, pfeatextract_, ptracker_) );
 
     // Visual Front-End processes every incoming frames 
-    pvisualfrontend_.reset( new VisualFrontEnd(pslamstate_, pcurframe_, 
-                                    pmap_, ptracker_
-                                )
-                            );
+    pvisualfrontend_.reset( new VisualFrontEnd(pslamstate_, pcurframe_, pmap_, ptracker_) );
 
     // Mapper thread handles Keyframes' processing
     // (i.e. triangulation, local map tracking, BA, LC)
@@ -119,7 +120,7 @@ void SlamManager::run()
 
     bis_on_ = true;
 
-    cv::Mat img_left, img_right;
+    cv::Mat img_left, img_right;     // 图像
 
     double time = -1.; // Current image timestamp
     double cam_delay = -1.; // Delay between two successive images
@@ -251,6 +252,7 @@ void SlamManager::addNewMonoImage(const double time, cv::Mat &im0)
 
 void SlamManager::addNewStereoImages(const double time, cv::Mat &im0, cv::Mat &im1) 
 {
+    // 文件设置的不需要矫正，不去畸变，下面不执行
     if( pslamstate_->bdo_stereo_rect_ || pslamstate_->bdo_undist_ ) {
         pcalib_model_left_->rectifyImage(im0, im0);
         pcalib_model_right_->rectifyImage(im1, im1);

@@ -34,7 +34,7 @@
 #include <functional>
 #include <cmath>
 #include <mutex>
-
+// 用于计时的类
 class Profiler {
 public:
     using Clock = std::chrono::high_resolution_clock;

@@ -37,10 +37,10 @@
 #include "loop_closer.hpp"
 
 struct Keyframe {
-    int kfid_;
-    cv::Mat imleft_, imright_;
-    cv::Mat imleftraw_, imrightraw_;
-    std::vector<cv::Mat> vpyr_imleft_, vpyr_imright_;
+    int kfid_;                                         // 关键帧的ID
+    cv::Mat imleft_, imright_;                       
+    cv::Mat imleftraw_, imrightraw_;                   // 左图右图原始图像
+    std::vector<cv::Mat> vpyr_imleft_, vpyr_imright_;  // 构建的图像金字塔
     bool is_stereo_;
     
     Keyframe()
@@ -59,6 +59,7 @@ struct Keyframe {
         , is_stereo_(true)
     {}
 
+    // 前端调用的构造函数
     Keyframe(int kfid, const cv::Mat &imleftraw, const cv::Mat &imrightraw, 
         const std::vector<cv::Mat> &vpyrleft
          )
@@ -112,8 +113,8 @@ public:
 
     void runFullPoseGraph(std::vector<double*> &vtwc, std::vector<double*> &vqwc, std::vector<double*> &vtprevcur, std::vector<double*> &vqprevcur, std::vector<bool> &viskf);
 
-    bool getNewKf(Keyframe &kf);
-    void addNewKf(const Keyframe &kf);
+    bool getNewKf(Keyframe &kf);       // 在列表中弹出一个关键帧
+    void addNewKf(const Keyframe &kf); // 添加关键帧
 
     void reset();
 
@@ -124,11 +125,11 @@ public:
     std::shared_ptr<Estimator> pestimator_;
     std::shared_ptr<LoopCloser> ploopcloser_;
 
-    bool bnewkfavailable_ = false;
+    bool bnewkfavailable_ = false;  // qkfs_不为空
     bool bwaiting_for_lc_ = false;
-    bool bexit_required_ = false; 
+    bool bexit_required_ = false;   // 程序要退出的标志
 
-    std::queue<Keyframe> qkfs_;
+    std::queue<Keyframe> qkfs_;     // 主线程传过来的关键帧
 
     std::mutex qkf_mutex_;
 };

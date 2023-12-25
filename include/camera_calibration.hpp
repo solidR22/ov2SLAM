@@ -57,9 +57,9 @@ public:
         double k1, double k2, double p1, double p2, double img_w, double img_h);
 
     void setUndistMap(const double alpha);
-
+    // 计算立体矫正映射
     void setUndistStereoMap(const cv::Mat &R, const cv::Mat &P, const cv::Rect &roi);
-
+    // 设置外参
     void setupExtrinsic(const Sophus::SE3d &Tc0ci);
 
     void setROIMask(const cv::Rect &roi);
@@ -96,11 +96,11 @@ public:
     // Calibration model
     double fx_, fy_, cx_, cy_;
     double k1_, k2_, p1_, p2_;
-    cv::Mat Kcv_, Dcv_;
-    Eigen::Matrix3d K_;
-    Eigen::Vector4d D_;
+    cv::Mat Kcv_, Dcv_;           // 内参和畸变参数
+    Eigen::Matrix3d K_;           // 内参
+    Eigen::Vector4d D_;           // 畸变参数
 
-    Eigen::Matrix3d iK_;
+    Eigen::Matrix3d iK_;          // K^(-1)
     double ifx_, ify_, icx_, icy_;
 
     // Image size
@@ -108,7 +108,7 @@ public:
     cv::Size img_size_;
 
     // Extrinsic Parameters (This cam to cam 0)
-    Sophus::SE3d Tc0ci_, Tcic0_;
+    Sophus::SE3d Tc0ci_, Tcic0_;       // Tc1c2(Tlr)
     cv::Mat Rcv_c0ci_, tcv_c0ci_;
     cv::Mat Rcv_cic0_, tcv_cic0_;
 

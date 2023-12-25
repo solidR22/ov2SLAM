@@ -71,7 +71,7 @@ public:
 
 #ifdef IBOW_LCD
     ibow_lcd::LCDetectorParams lcparams_; 
-    ibow_lcd::LCDetector lcdetetector_;
+    ibow_lcd::LCDetector lcdetetector_;    // 闭环检测器
 #endif
 
     std::shared_ptr<SlamParams> pslamstate_;
@@ -79,15 +79,15 @@ public:
 
     std::unique_ptr<Optimizer> poptimizer_;
 
-    std::shared_ptr<Frame> pnewkf_;
-    cv::Mat newkfimg_;
+    std::shared_ptr<Frame> pnewkf_;  // 当前帧Frame
+    cv::Mat newkfimg_;               // 当前帧的左图原始图
 
-    int kf_idx_ = -1;
-    std::vector<int> vkfids_;
+    int kf_idx_ = -1;                // 闭环检测的帧数量
+    std::vector<int> vkfids_;        // 闭环处理过的关键帧ID
 
     bool bnewkfavailable_ = false;
-    bool bexit_required_ = false;
+    bool bexit_required_ = false;    // 程序结束的标志
 
-    std::queue<std::pair<std::shared_ptr<Frame>, cv::Mat>> qpkfs_;
+    std::queue<std::pair<std::shared_ptr<Frame>, cv::Mat>> qpkfs_;  // 从建图线程插入的关键帧和左图的原始图像
     std::mutex qkf_mutex_;
 };

@@ -46,22 +46,22 @@
 struct Keypoint {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    int lmid_;
+    int lmid_;              // 当前特征点的ID
 
-    cv::Point2f px_;
-    cv::Point2f unpx_;
-    Eigen::Vector3d bv_;
+    cv::Point2f px_;        // 特征点像素坐标
+    cv::Point2f unpx_;      // 去畸变的特征点坐标
+    Eigen::Vector3d bv_;    // 特征点的归一化坐标
 
-    int scale_;
+    int scale_;             // ? 默认为0
     float angle_;
-    cv::Mat desc_;
+    cv::Mat desc_;          // 特征点的brief描述子
     
-    bool is3d_;
+    bool is3d_;             // 对应的地图点是否是3D点
 
-    bool is_stereo_;
-    cv::Point2f rpx_;
-    cv::Point2f runpx_;
-    Eigen::Vector3d rbv_;
+    bool is_stereo_;        // 是立体特征点（左右图匹配上）
+    cv::Point2f rpx_;       // 右图的像素坐标
+    cv::Point2f runpx_;     // 右图的去畸变像素坐标
+    Eigen::Vector3d rbv_;   // 右图的归一化坐标
 
     bool is_retracked_;
 
@@ -107,14 +107,14 @@ public:
 
     void addKeypoint(const Keypoint &kp);
     void addKeypoint(const cv::Point2f &pt, const int lmid);
-    void addKeypoint(const cv::Point2f &pt, const int lmid, const cv::Mat &desc);
+    void addKeypoint(const cv::Point2f &pt, const int lmid, const cv::Mat &desc); // 给当前帧添加特征点，并给特征点添加描述子
     void addKeypoint(const cv::Point2f &pt, const int lmid, const int scale);
     void addKeypoint(const cv::Point2f &pt, const int lmid, const cv::Mat &desc, const int scale);
     void addKeypoint(const cv::Point2f &pt, const int lmid, const cv::Mat &desc, const int scale, const float angle);
 
     void updateKeypoint(const cv::Point2f &pt, Keypoint &kp);
     void updateKeypoint(const int lmid, const cv::Point2f &pt);
-    void updateKeypointDesc(const int lmid, const cv::Mat &desc);
+    void updateKeypointDesc(const int lmid, const cv::Mat &desc);  // 更新当前帧中特征点描述子
     void updateKeypointAngle(const int lmid, const float angle);
 
     bool updateKeypointId(const int prevlmid, const int newlmid, const bool is3d);
@@ -132,6 +132,7 @@ public:
     void removeKeypointFromGrid(const Keypoint &kp);
     void updateKeypointInGrid(const Keypoint &prevkp, const Keypoint &newkp);
     std::vector<Keypoint> getKeypointsFromGrid(const cv::Point2f &pt) const;
+    // 根据像素坐标获取特征点所在网格的ID
     int getKeypointCellIdx(const cv::Point2f &pt) const;
 
     std::vector<Keypoint> getSurroundingKeypoints(const Keypoint &kp) const;
@@ -158,7 +159,7 @@ public:
 
     std::set<int> getCovisibleKfSet() const;
 
-    std::map<int,int> getCovisibleKfMap() const;
+    std::map<int,int> getCovisibleKfMap() const; // 返回所有的共视关键帧<共视关键帧的ID, 共视特征点的个数>
     void updateCovisibleKfMap(const std::map<int,int> &cokfs);
     void addCovisibleKf(const int kfid);
     void removeCovisibleKf(const int kfid);
@@ -174,15 +175,15 @@ public:
     cv::Point2f projDistCamToRightImage(const Eigen::Vector3d &pt) const;
 
     Eigen::Vector3d projCamToWorld(const Eigen::Vector3d &pt) const;
-    Eigen::Vector3d projWorldToCam(const Eigen::Vector3d &pt) const;
+    Eigen::Vector3d projWorldToCam(const Eigen::Vector3d &pt) const;  // 将空间点的三维坐标转换到当前帧的坐标系
 
     cv::Point2f projWorldToImage(const Eigen::Vector3d &pt) const;
-    cv::Point2f projWorldToImageDist(const Eigen::Vector3d &pt) const;
+    cv::Point2f projWorldToImageDist(const Eigen::Vector3d &pt) const; // 三维点投影到像素坐标系
 
     cv::Point2f projWorldToRightImage(const Eigen::Vector3d &pt) const;
     cv::Point2f projWorldToRightImageDist(const Eigen::Vector3d &pt) const;
 
-    bool isInImage(const cv::Point2f &pt) const;
+    bool isInImage(const cv::Point2f &pt) const;   // 像素坐标是否在图像内
     bool isInRightImage(const cv::Point2f &pt) const;
 
     void displayFrameInfo();
@@ -195,18 +196,19 @@ public:
     void reset();
 
     // Frame info
-    int id_, kfid_;
+    int id_, kfid_;                        // 当前帧ID（在所有帧），关键帧的ID（在关键帧的ID）
     double img_time_;
 
     // Hash Map of observed keypoints
-    std::unordered_map<int, Keypoint> mapkps_;
+    std::unordered_map<int, Keypoint> mapkps_;           // 此帧中的特征点集合
 
     // Grid of kps sorted by cell numbers and scale
     // (We use const pointer to reference the keypoints in vkps_
     // HENCE we should only use the grid to read kps)
-    std::vector<std::vector<int>> vgridkps_;
+    std::vector<std::vector<int>> vgridkps_;             // 每个网格中的特征点ID
+    // 网格数量 , 有多少个网格中有特征点 , 特征点的最小距离 , 每一行有几个网格， 每一列有几个网格
     size_t ngridcells_, noccupcells_, ncellsize_, nbwcells_, nbhcells_;
-
+    // 特征点的数量，2d特征点的数量，3d特征点的数量，立体特征点的数量（左右图匹配上的）
     size_t nbkps_, nb2dkps_, nb3dkps_, nb_stereo_kps_;
 
     // Pose (T cam -> world), (T world -> cam)
@@ -222,13 +224,13 @@ public:
     std::shared_ptr<CameraCalibration> pcalib_leftcam_;
     std::shared_ptr<CameraCalibration> pcalib_rightcam_;
 
-    Eigen::Matrix3d Frl_;
-    cv::Mat Fcv_;
+    Eigen::Matrix3d Frl_; // 基础矩阵
+    cv::Mat Fcv_;         // 基础矩阵
 
-    // Covisible kf ids
+    // 这帧的共视关键帧<共视关键帧的ID, 共视特征点的个数>
     std::map<int,int> map_covkfs_;
 
-    // Local MapPoint ids
+    // Local MapPoint ids，是共视帧的3D点，但不是当前帧的特征点
     std::unordered_set<int> set_local_mapids_;
 
     // Mutex

@@ -284,7 +284,24 @@ std::vector<cv::Mat> FeatureExtractor::describeBRIEF(const cv::Mat &im, const st
     return vdescs;
 }
 
-
+/**
+1.函数开始检查输入图像 im 是否为空，如果为空，则返回一个空的 std::vector<cv::Point2f>。
+2.计算图像的行数 nrows 和列数 ncols。
+3.根据输入的 ncellsize 计算每个细胞（cell）的半边长度 nhalfcell。
+4.计算图像中细胞的行数 nhcells 和列数 nwcells，以及总的细胞数 nbcells。
+5.创建一个 std::vector<cv::Point2f>，用于存储检测到的特征点，并预留空间。
+6.创建一个布尔类型的二维向量 voccupcells，用于表示细胞是否被占用。
+7.创建一个和输入图像相同大小的掩码 mask，并设置所有元素为1。
+8.对于输入的当前关键点 vcurkps，将它们所在的细胞标记为已占用，并在掩码中对应位置画圆以避免在该区域检测新的特征点。
+9.初始化变量 nboccup 为0，表示占用的细胞数。
+10.使用并行计算（parallel_for_）遍历每个细胞，对于未占用的细胞，使用高斯滤波和角点检测计算特征响应图，并在细胞内选择最大特征响应的点作为特征点。
+11.将检测到的特征点保存在 vvdetectedpx 中，并在掩码中更新相应位置。
+12.最后，根据检测到的特征点和次要检测到的特征点（vvsecdetectionspx），更新输出的特征点向量 vdetectedpx。
+13.最后，根据检测到的特征点的数量和占用的细胞数量，调整参数 dmaxquality_ 的值。
+14.如果检测到的特征点数量低于细胞总数的1/3，则减小 dmaxquality_，如果特征点数量超过总数的90%，则增大 dmaxquality_。
+15.最后，如果检测到的特征点不为空，使用 cv::cornerSubPix 对特征点进行亚像素精度的优化。
+*/
+// 原始图像，网格尺寸，已经有的特征点，提取的部分
 std::vector<cv::Point2f> FeatureExtractor::detectSingleScale(const cv::Mat &im, const int ncellsize, 
         const std::vector<cv::Point2f> &vcurkps, const cv::Rect &roi) 
 {    
@@ -303,9 +320,10 @@ std::vector<cv::Point2f> FeatureExtractor::detectSingleScale(const cv::Mat &im, 
 
     size_t nbcells = nhcells * nwcells;
 
+    // 提取出的特征点坐标
     std::vector<cv::Point2f> vdetectedpx;
     vdetectedpx.reserve(nbcells);
-
+    // 网格内是否有特征点
     std::vector<std::vector<bool>> voccupcells(
             nhcells+1, 
             std::vector<bool>(nwcells+1, false)
@@ -325,7 +343,7 @@ std::vector<cv::Point2f> FeatureExtractor::detectSingleScale(const cv::Mat &im, 
 
     size_t nboccup = 0;
 
-    std::vector<std::vector<cv::Point2f>> vvdetectedpx(nbcells);
+    std::vector<std::vector<cv::Point2f>> vvdetectedpx(nbcells); // 检测到的特征点
 
     std::vector<std::vector<cv::Point2f>> vvsecdetectionspx(nbcells);
 
@@ -351,10 +369,11 @@ std::vector<cv::Point2f> FeatureExtractor::detectSingleScale(const cv::Mat &im, 
             cv::Mat hmap;
             cv::Mat filtered_im;
             cv::GaussianBlur(im(hroi), filtered_im, cv::Size(3,3), 0.);
+            // 是 OpenCV 中用于计算图像中每个像素的最小特征值的函数，通常用于角点检测。
             cv::cornerMinEigenVal(filtered_im, hmap, 3, 3);
 
             double dminval, dmaxval;
-            cv::Point minpx, maxpx;
+            cv::Point minpx, maxpx; // 特征点坐标
 
             cv::minMaxLoc(hmap.mul(mask(hroi)), &dminval, &dmaxval, &minpx, &maxpx);
             maxpx.x += x;

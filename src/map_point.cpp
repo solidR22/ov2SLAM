@@ -73,7 +73,7 @@ MapPoint::MapPoint(const int lmid, const int kfid, const cv::Mat &desc,
     ptxyz_.setZero();
 }
 
-
+// 设置这个点的空间坐标和在左图的深度的逆
 void MapPoint::setPoint(const Eigen::Vector3d &ptxyz, const double kfanch_invdepth)
 {
     std::lock_guard<std::mutex> lock(pt_mutex);
@@ -90,7 +90,7 @@ Eigen::Vector3d MapPoint::getPoint() const
     std::lock_guard<std::mutex> lock(pt_mutex);
     return ptxyz_;
 }
-
+// 返回能看到这个地图点的所有关键帧
 std::set<int> MapPoint::getKfObsSet() const
 {
     std::lock_guard<std::mutex> lock(pt_mutex);
@@ -102,7 +102,7 @@ void MapPoint::addKfObs(const int kfid)
     std::lock_guard<std::mutex> lock(pt_mutex);
     set_kfids_.insert(kfid);
 }
-
+// 从地图点中删除这个关键帧的信息
 void MapPoint::removeKfObs(const int kfid)
 {
     std::lock_guard<std::mutex> lock(pt_mutex);

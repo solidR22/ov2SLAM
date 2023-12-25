@@ -56,9 +56,9 @@ public:
     // Variables relative to the current state of the SLAM
     //=====================================================
 
-    bool blocalba_is_on_ = false;
-    bool blc_is_on_ = false;
-    bool bvision_init_ = false;
+    bool blocalba_is_on_ = false;      // 局部BA是否正在进行
+    bool blc_is_on_ = false;           // 正在闭环
+    bool bvision_init_ = false;        // 是否初始化
     bool breset_req_ = false;
     bool bforce_realtime_ = false;
 
@@ -87,59 +87,60 @@ public:
     // SLAM settings
     bool debug_, log_timings_;
 
-    bool mono_, stereo_;
+    bool mono_, stereo_;          // 单目还是双目模式
 
     bool slam_mode_;
 
-    bool buse_loop_closer_;
-    int lckfid_ = -1;
+    bool buse_loop_closer_;       // 是否开启回环
+    int lckfid_ = -1;             // 闭环线程中正在处理的关键帧ID
 
-    float finit_parallax_;
+    float finit_parallax_;        // 用于判定关键帧的视差 
     
-    bool bdo_stereo_rect_;
+    bool bdo_stereo_rect_;        // 是否进行立体矫正，文件中为0
     double alpha_;
 
-    bool bdo_undist_;
+    bool bdo_undist_;             // 是否对图像去畸变
 
     // Keypoints Extraction
     bool use_fast_, use_shi_tomasi_, use_brief_;
     bool use_singlescale_detector_;
     
-    int nfast_th_;
-    int nbmaxkps_, nmaxdist_;
-    double dmaxquality_;
+    int nbmaxkps_;                     // 每一帧特征点的最大数量
+    int nmaxdist_;                     //特征点的最大/小距离
+    double dmaxquality_;               // ? used for gftt or singlescale
+    int nfast_th_;                     // ? used for gftt or singlescale
 
     // Image Processing
-    bool use_clahe_;
-    float fclahe_val_;
+    bool use_clahe_;                   // 使用图像预处理，文件设置为1
+    float fclahe_val_;                 // 对比度限制参数，控制每个像素的对比度增强程度，较大的值会导致更强烈的对比度增强
 
     // KLT Parameters
-    bool do_klt_, klt_use_prior_;
-    bool btrack_keyframetoframe_;
-    int nklt_win_size_, nklt_pyr_lvl_;
-    cv::Size klt_win_size_;
+    bool do_klt_, klt_use_prior_;      // 使用光流，优先使用3D点追踪
+    bool btrack_keyframetoframe_;      // 计算关键帧到当前帧的光流，文件设置为false
+    int nklt_win_size_, nklt_pyr_lvl_; // 从0开始的最大金字塔等级编号，文件设置为3
+    cv::Size klt_win_size_;            // 光流算法的窗口大小，文件设置为9
 
-    float fmax_fbklt_dist_;
-    int nmax_iter_;
-    float fmax_px_precision_;
+    float fmax_fbklt_dist_;            // ?最大光流距离
+    int nmax_iter_;                    // 最大迭代次数
+    float fmax_px_precision_;          // 迭代最大相对变化阈值
 
-    int nklt_err_;
+    int nklt_err_;                     // ?光流误差
 
     // Matching th.
-    bool bdo_track_localmap_;
+    bool bdo_track_localmap_;          // 跟踪局部地图，文件设置为1
     
-    float fmax_desc_dist_;
-    float fmax_proj_pxdist_;
+    float fmax_desc_dist_;             // ?局部地图跟踪的
+    float fmax_proj_pxdist_;           // 局部地图跟踪的最大特征点像素距离误差
 
     // Error thresholds
-    bool doepipolar_;
-    bool dop3p_;
+    bool doepipolar_; // 极线去除外点，开
+    bool dop3p_;      // 进行p3p,关
     bool bdo_random; // RANDOMIZE RANSAC?
     float fransac_err_;
     int nransac_iter_;
     float fepi_th_;
 
-    float fmax_reproj_err_;
+    float fmax_reproj_err_;  // 立体匹配时的空间点投影到像素平面的误差
     bool buse_inv_depth_;
 
     // Bundle Adjustment Parameters
@@ -158,7 +159,7 @@ public:
     int nmin_covscore_; // Number of common observations req. for opt. a KF in localBA
 
     // Map Filtering parameters
-    float fkf_filtering_ratio_;
+    float fkf_filtering_ratio_;   // 优化线程，该关键帧观测到的"95%"的3D点已经被至少其他4个关键帧观测到
 
     // Final BA
     bool do_full_ba_;

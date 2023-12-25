@@ -32,7 +32,7 @@ SlamParams::SlamParams(const cv::FileStorage &fsSettings) {
 
     // READ THE SETTINGS
     save_path.assign(fsSettings["savePath"]);
-    
+
     debug_ = static_cast<int>(fsSettings["debug"]);;
     log_timings_ = static_cast<int>(fsSettings["log_timings"]);;
 
@@ -79,13 +79,13 @@ SlamParams::SlamParams(const cv::FileStorage &fsSettings) {
 
         cv::Mat cvTbc0, cvTbc1;
         Eigen::Matrix4d Tbc0, Tbc1;
-
+        // 读取为cv::Mat格式
         fsSettings["body_T_cam0"] >> cvTbc0;
         fsSettings["body_T_cam1"] >> cvTbc1;
-
+        // cv::Mat 转 Eigen
         cv::cv2eigen(cvTbc0,Tbc0);
         cv::cv2eigen(cvTbc1,Tbc1);
-
+        // Eigen 转 Sophus
         T_left_right_ = Sophus::SE3d(Tbc0.inverse() * Tbc1);
     }
 

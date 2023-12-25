@@ -18,7 +18,9 @@ else()
 endif()
 
 set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_CXX_FLAGS_RELEASE "-O0 -Wall -march=native -g")
 # set(CMAKE_BUILD_TYPE "Release")
+# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -march=native -g")
 
 #######
 # NOTE!
@@ -30,8 +32,6 @@ set(CMAKE_BUILD_TYPE "Debug")
 # If you experience exceptions you can either re-compile
 # opengv and ov2slam without -march=native or re-compile
 # ceres with it
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -march=native -g")
-
 
 if(WITH_OPENCV_CONTRIB)
     message("\nGoing to use OpenCV contrib! (WITH_OPENCV_CONTRIB is set to : ${WITH_OPENCV_CONTRIB}.

@@ -59,6 +59,7 @@ Frame::Frame(std::shared_ptr<CameraCalibration> pcalib_left, std::shared_ptr<Cam
 
     Eigen::Matrix3d R = pcalib_rightcam_->Tcic0_.rotationMatrix();
 
+    // 基础矩阵 = 右相机的内参的转置的逆 * 平移反对称矩阵 * R * 左相机内参的逆
     Frl_ = pcalib_rightcam_->K_.transpose().inverse() * tskew * R * pcalib_leftcam_->iK_;
 
     cv::eigen2cv(Frl_, Fcv_);
@@ -336,7 +337,7 @@ void Frame::updateKeypoint(const int lmid, const cv::Point2f &pt)
     std::lock_guard<std::mutex> lock(kps_mutex_);
 
     auto it = mapkps_.find(lmid);
-    if( it == mapkps_.end() ) {
+    if( it == mapkps_.end() ) { // 一般不会发生
         return;
     } 
 
@@ -401,7 +402,7 @@ bool Frame::updateKeypointId(const int prevlmid, const int newlmid, const bool i
     return true;
 }
 
-// Compute stereo keypoint from raw pixel position
+// Compute stereo keypoint from raw pixel position，右图特征点像素坐标，特征点Keypoint
 void Frame::computeStereoKeypoint(const cv::Point2f &pt, Keypoint &kp)
 {
     kp.rpx_ = pt;
@@ -419,11 +420,11 @@ void Frame::computeStereoKeypoint(const cv::Point2f &pt, Keypoint &kp)
     }
 }
 
-
+// 更新左右图匹配上的特征点的信息，特征点ID，右图的像素坐标
 void Frame::updateKeypointStereo(const int lmid, const cv::Point2f &pt)
 {
     std::lock_guard<std::mutex> lock(kps_mutex_);
-
+    // 该帧没有这个特征点直接返回
     auto it = mapkps_.find(lmid);
     if( it == mapkps_.end() ) {
         return;
@@ -467,7 +468,7 @@ inline void Frame::removeStereoKeypoint(const Keypoint &kp)
 
     removeStereoKeypointById(kp.lmid_);
 }
-
+// 通过id删除立体点（没有删除右图特征点的像素坐标）
 void Frame::removeStereoKeypointById(const int lmid)
 {
     std::lock_guard<std::mutex> lock(kps_mutex_);
@@ -482,7 +483,7 @@ void Frame::removeStereoKeypointById(const int lmid)
         nb_stereo_kps_--;
     }
 }
-
+// 将这个帧中的这个ID的特征点设为3D点
 void Frame::turnKeypoint3d(const int lmid)
 {
     std::lock_guard<std::mutex> lock(kps_mutex_);
@@ -498,7 +499,7 @@ void Frame::turnKeypoint3d(const int lmid)
         nb2dkps_--;
     }
 }
-
+// 是当前帧中的特征点
 bool Frame::isObservingKp(const int lmid) const
 {
     std::lock_guard<std::mutex> lock(kps_mutex_);
@@ -590,13 +591,14 @@ int Frame::getKeypointCellIdx(const cv::Point2f &pt) const
     int c = floor(pt.x / ncellsize_);
     return (r * nbwcells_ + c);
 }
-
+// 返回这个特征点所在网格的左边网格和上边网格和左上网格中的特征点
 std::vector<Keypoint> Frame::getSurroundingKeypoints(const Keypoint &kp) const
 {
     std::vector<Keypoint> vkps;
     vkps.reserve(20);
 
-    int rkp = floor(kp.px_.y / ncellsize_);
+    // 找到对应的网格
+    int rkp = floor(kp.px_.y / ncellsize_); 
     int ckp = floor(kp.px_.x / ncellsize_);
 
     std::lock_guard<std::mutex> lock(kps_mutex_);
@@ -620,7 +622,7 @@ std::vector<Keypoint> Frame::getSurroundingKeypoints(const Keypoint &kp) const
     }
     return vkps;
 }
-
+// 返回这个特征点所在网格的左边网格和上边网格和左上网格中的特征点
 std::vector<Keypoint> Frame::getSurroundingKeypoints(const cv::Point2f &pt) const
 {
     std::vector<Keypoint> vkps;
@@ -648,7 +650,7 @@ std::vector<Keypoint> Frame::getSurroundingKeypoints(const cv::Point2f &pt) cons
     }
     return vkps;
 }
-
+// 返回所有的共视关键帧<共视关键帧的ID, 共视特征点的个数>
 std::map<int,int> Frame::getCovisibleKfMap() const
 {
     std::lock_guard<std::mutex> lock(cokfs_mutex_);
@@ -786,7 +788,7 @@ cv::Point2f Frame::projCamToRightImage(const Eigen::Vector3d &pt) const
 {
     return pcalib_rightcam_->projectCamToImage(pcalib_rightcam_->Tcic0_ * pt);
 }
-
+// 三维点投影到未去畸变的像素平面
 cv::Point2f Frame::projCamToImageDist(const Eigen::Vector3d &pt) const
 {
     return pcalib_leftcam_->projectCamToImageDist(pt);
@@ -798,7 +800,7 @@ cv::Point2f Frame::projCamToRightImageDist(const Eigen::Vector3d &pt) const
     return pcalib_rightcam_->projectCamToImageDist(pcalib_rightcam_->Tcic0_ * pt);
 }
 
-
+// 将三维点从相机坐标系转到世界坐标系
 Eigen::Vector3d Frame::projCamToWorld(const Eigen::Vector3d &pt) const
 {
     std::lock_guard<std::mutex> lock(pose_mutex_);
@@ -807,7 +809,7 @@ Eigen::Vector3d Frame::projCamToWorld(const Eigen::Vector3d &pt) const
 
     return wpt;
 }
-
+// 计算空间点在相机坐标系下的坐标
 Eigen::Vector3d Frame::projWorldToCam(const Eigen::Vector3d &pt) const
 {
     std::lock_guard<std::mutex> lock(pose_mutex_);

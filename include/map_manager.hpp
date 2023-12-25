@@ -53,7 +53,7 @@ public:
     void addMapPoint(const cv::Scalar &color = cv::Scalar(200));
     void addMapPoint(const cv::Mat &desc, const cv::Scalar &color = cv::Scalar(200));
 
-    std::shared_ptr<Frame> getKeyframe(const int kfid) const;
+    std::shared_ptr<Frame> getKeyframe(const int kfid) const;     // 根据ID拿到Frame
     std::shared_ptr<MapPoint> getMapPoint(const int lmid) const;
 
     void updateMapPoint(const int lmid, const Eigen::Vector3d &wpt, const double kfanch_invdepth=-1.);
@@ -77,6 +77,7 @@ public:
     void addKeypointsToFrame(const cv::Mat &im, const std::vector<cv::Point2f> &vpts, Frame &frame);
     void addKeypointsToFrame(const cv::Mat &im, const std::vector<cv::Point2f> &vpts, 
                 const std::vector<int> &vscales, Frame &frame);
+    // 给当前帧添加特征点和描述子
     void addKeypointsToFrame(const cv::Mat &im, const std::vector<cv::Point2f> &vpts, 
                 const std::vector<cv::Mat> &vdescs, Frame &frame);
     void addKeypointsToFrame(const cv::Mat &im, const std::vector<cv::Point2f> &vpts, 
@@ -108,8 +109,10 @@ public:
 
     void reset();
     
-    int nlmid_, nkfid_;
-    int nblms_, nbkfs_;
+    int nlmid_;        // 地图点的数量
+    int nkfid_;        // 关键帧的数量
+    int nblms_;        // 地图点的数量（减掉去除后的）
+    int nbkfs_;        // 关键帧的数量（减掉去除后的）
 
     std::shared_ptr<SlamParams> pslamstate_;
     std::shared_ptr<FeatureExtractor> pfeatextract_;
@@ -117,8 +120,8 @@ public:
 
     std::shared_ptr<Frame> pcurframe_;
 
-    std::unordered_map<int, std::shared_ptr<Frame>> map_pkfs_;
-    std::unordered_map<int, std::shared_ptr<MapPoint>> map_plms_;
+    std::unordered_map<int, std::shared_ptr<Frame>> map_pkfs_;      // 地图的关键帧集合<关键帧ID，Frame>
+    std::unordered_map<int, std::shared_ptr<MapPoint>> map_plms_;   // 地图点的集合<地图点ID，MapPoint>
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcloud_;
 

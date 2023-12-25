@@ -41,7 +41,7 @@ void Estimator::run()
             {
                 if( pslamstate_->debug_ )
                     std::cout << "\n [Estimator] Slam-Mode - Processing new KF #" << pnewkf_->kfid_;
-
+                // 局部BA
                 applyLocalBA();
 
                 mapFiltering();
@@ -66,6 +66,7 @@ void Estimator::run()
 
 void Estimator::applyLocalBA()
 {
+    // 单目从第3个关键帧开始，双目从第二个关键帧开始
     int nmincstkfs = 1;
     if( pslamstate_->mono_ ) {
         nmincstkfs = 2;
@@ -74,7 +75,7 @@ void Estimator::applyLocalBA()
     if( pnewkf_->kfid_ < nmincstkfs ) {
         return;
     }
-
+    // 当前帧没有3D点直接return
     if( pnewkf_->nb3dkps_ == 0 ) {
         return;
     }
@@ -97,7 +98,7 @@ void Estimator::applyLocalBA()
         Profiler::StopAndDisplay(pslamstate_->debug_, "1.BA_localBA");
 }
 
-
+// 删除关键帧；标准为：该关键帧观测到的95%3D点已经被至少其他4个关键帧观测到
 void Estimator::mapFiltering()
 {
     if( pslamstate_->fkf_filtering_ratio_ >= 1. ) {
@@ -110,9 +111,9 @@ void Estimator::mapFiltering()
 
     if( pslamstate_->debug_ || pslamstate_->log_timings_ )
         Profiler::Start("1.BA_map-filtering");
-        
+    // 得到共视关键帧
     auto covkf_map = pnewkf_->getCovisibleKfMap();
-
+    // 遍历共视关键帧
     for( auto it = covkf_map.rbegin() ; it != covkf_map.rend() ; it++ ) {
 
         int kfid = it->first;
@@ -120,7 +121,7 @@ void Estimator::mapFiltering()
         if( bnewkfavailable_ || kfid == 0 ) {
             break;
         }
-
+        // 不处理的情景：共视帧在这一帧后；用于闭环；为空；共视帧3D点少于阈值
         if( kfid >= pnewkf_->kfid_ ) {
             continue;
         }
@@ -143,6 +144,7 @@ void Estimator::mapFiltering()
 
         size_t nbgoodobs = 0;
         size_t nbtot = 0;
+        // 遍历共视帧的3D点，该关键帧观测到的95%3D点已经被至少其他4个关键帧观测到，则删除关键帧
         for( const auto &kp : pkf->getKeypoints3d() )
         {
             auto plm = pmap_->getMapPoint(kp.lmid_);
@@ -195,18 +197,19 @@ bool Estimator::getNewKf()
     // In SLAM-mode, we only processed the last received KF
     // but we trick the covscore if several KFs were waiting
     // to make sure that they are all optimized
-    std::vector<int> vkfids;
+    // !弹出列表所有的关键帧，vkfids存放上次的关键帧的kfid，长度为列表内关键帧的数量，似乎vkfids的每个数据内容都一样
+    std::vector<int> vkfids;       
     vkfids.reserve(qpkfs_.size());
     while( qpkfs_.size() > 1 ) {
         qpkfs_.pop();
         vkfids.push_back(pnewkf_->kfid_);
     }
-    pnewkf_ = qpkfs_.front();
+    pnewkf_ = qpkfs_.front();      // 取出最新的一帧关键帧
     qpkfs_.pop();
 
     if( !vkfids.empty() ) {
-        for( const auto &kfid : vkfids ) {
-            pnewkf_->map_covkfs_[kfid] = pnewkf_->nb3dkps_;
+        for( const auto &kfid : vkfids ) { // 遍历上次关键帧的ID
+            pnewkf_->map_covkfs_[kfid] = pnewkf_->nb3dkps_; // ?将共视关键帧（这帧的前一帧）的共视点设置为这一帧的3D点数量
         }
 
         if( pslamstate_->debug_ )

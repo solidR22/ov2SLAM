@@ -32,6 +32,7 @@
 
 #include "multi_view_geometry.hpp"
 
+// 光流法找特征点
 void FeatureTracker::fbKltTracking(const std::vector<cv::Mat> &vprevpyr, const std::vector<cv::Mat> &vcurpyr, 
         int nwinsize, int nbpyrlvl, float ferr, float fmax_fbklt_dist, std::vector<cv::Point2f> &vkps, 
         std::vector<cv::Point2f> &vpriorkps, std::vector<bool> &vkpstatus) const
